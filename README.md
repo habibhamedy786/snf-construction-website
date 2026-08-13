@@ -145,6 +145,9 @@ To update the site later, drag the folder onto the same page again.
 - [ ] Phone number and email double-checked (tap them on a phone to test)
 - [ ] Real project photos and project names in place
 - [ ] Real client reviews (or remove the Reviews section until you have some)
+- [ ] The **5.0 star rating** above the reviews is a placeholder — replace it with your real
+      Google rating and review count, or delete that block. Do not publish it as-is
+- [ ] Check the city list in the **Service Area** section matches where you actually work
 - [ ] License number added to the footer
 - [ ] Contact form connected to Formspree and tested
 - [ ] Update `https://www.snfconstruction.com/` in `index.html` to your real domain
@@ -157,9 +160,17 @@ To update the site later, drag the folder onto the same page again.
 If you ever want to adjust the blue, it is set in one place at the top of `styles.css`:
 
 ```
---blue-500: #2F76CC;   /* main blue — buttons, links, headings accent */
---blue-400: #5B8FD4;   /* logo blue */
---navy-800: #0A1B33;   /* dark navy — header, footer */
+--blue-500:   #2A6CBE;   /* main blue — buttons, links, section labels */
+--blue-400:   #5B8FD4;   /* logo blue — accents on dark backgrounds */
+--orange-600: #C2410C;   /* safety orange — "Active" job badges */
+--navy-800:   #0A1B33;   /* dark navy — header, footer */
 ```
 
-Change those three values and the whole site follows.
+Change those values and the whole site follows.
+
+**A warning before you change them:** every colour above was picked to pass the WCAG AA
+contrast standard (4.5:1) so the text stays readable for everyone, including people with
+low vision — and, practically, so the site does not get flagged in accessibility audits.
+A lighter blue or a brighter orange will look fine on your monitor and fail that test.
+If you want to change one, check the new value at https://webaim.org/resources/contrastchecker/
+against white (`#FFFFFF`) first and keep the ratio at 4.5 or above.

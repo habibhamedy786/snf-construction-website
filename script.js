@@ -72,21 +72,65 @@
     note.className = 'form-note' + (kind ? ' ' + kind : '');
   }
 
+  var REQUIRED = ['name', 'email', 'message'];
+
+  function fieldError(id) {
+    var el = document.getElementById(id);
+    var v = el.value.trim();
+    if (!v) {
+      return id === 'name' ? 'Please enter your name.'
+           : id === 'email' ? 'Please enter your email address.'
+           : 'Please tell us a little about the project.';
+    }
+    if (id === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+      return 'That email address does not look right.';
+    }
+    return '';
+  }
+
+  /* Validate each field when the visitor leaves it, rather than waiting for submit —
+     the error appears next to the field they just filled in, while it is still in mind. */
+  REQUIRED.forEach(function (id) {
+    var el = document.getElementById(id);
+    var msg = document.createElement('p');
+    msg.className = 'field-error';
+    msg.id = id + '-error';
+    el.parentNode.appendChild(msg);
+
+    function check() {
+      var err = fieldError(id);
+      el.classList.toggle('invalid', !!err);
+      el.setAttribute('aria-invalid', err ? 'true' : 'false');
+      msg.textContent = err;
+      return !err;
+    }
+
+    el.setAttribute('aria-describedby', msg.id);
+    el.addEventListener('blur', check);
+    // once a field has been flagged, re-check as they type so the error clears immediately
+    el.addEventListener('input', function () {
+      if (el.classList.contains('invalid')) check();
+    });
+    el._check = check;
+  });
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
-    var required = ['name', 'email', 'message'];
     var missing = false;
+    var firstBad = null;
 
-    required.forEach(function (id) {
+    REQUIRED.forEach(function (id) {
       var el = document.getElementById(id);
-      var bad = !el.value.trim() || (id === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value));
-      el.classList.toggle('invalid', bad);
-      if (bad) missing = true;
+      if (!el._check()) {
+        missing = true;
+        if (!firstBad) firstBad = el;
+      }
     });
 
     if (missing) {
-      setNote('Please fill in your name, a valid email, and your project details.', 'err');
+      setNote('Please check the highlighted fields above.', 'err');
+      firstBad.focus();
       return;
     }
 
