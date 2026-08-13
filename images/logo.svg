@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 100" role="img" aria-label="SNF Construction">
+  <g fill="#5B8FD4">
+    <!-- left peak -->
+    <path d="M28 50 L54 88 L2 88 Z"/>
+    <!-- centre peak with notch -->
+    <path fill-rule="evenodd" d="M110 10 L168 88 L52 88 Z M110 52 L134 84 L86 84 Z"/>
+    <!-- right peak -->
+    <path d="M192 50 L218 88 L166 88 Z"/>
+  </g>
+</svg>
