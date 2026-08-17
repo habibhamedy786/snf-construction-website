@@ -51,7 +51,7 @@ Everything you can read on the site lives in `index.html`. Open it in TextEdit, 
 
 Things you will probably want to change:
 
-- **"15+ Years"** — appears in the hero stats and on the About photo badge.
+- **"20+ Years"** — appears in the hero stats and on the About photo badge.
 - **Project names and cities** in the "Our Jobsites" section — these are placeholders.
 - **The three client reviews** — replace with real ones once you have them.
 - **Hours** — currently "Mon–Sat, 7:00am – 6:00pm".

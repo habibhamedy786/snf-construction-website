@@ -31,7 +31,13 @@
   --shadow-md: 0 12px 32px rgba(10, 27, 51, .12);
   --shadow-lg: 0 24px 60px rgba(10, 27, 51, .18);
 
-  --ease: cubic-bezier(.22, .61, .36, 1);
+  /* Built-in CSS easings are too weak to read as intentional. These two are the
+     workhorses: ease-out for anything entering or leaving, ease-in-out for
+     something moving from A to B on screen. Never ease-in — it starts slow, which
+     delays the exact moment the eye is on the element. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease: var(--ease-out);   /* alias — existing rules keep working */
 }
 
 * { box-sizing: border-box; }
@@ -93,9 +99,19 @@ h1, h2, h3, h4 {
   border: 2px solid transparent;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all .25s var(--ease);
+  /* named properties, never `all` — `all` transitions layout properties too and
+     makes every future declaration on this rule silently animated */
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    color 200ms var(--ease-out);
   white-space: nowrap;
 }
+/* press feedback — the one animation that pays for itself on touch, where
+   there is no hover state to confirm the tap landed */
+.btn:active { transform: scale(.98); transition-duration: 100ms; }
 .btn-sm { padding: 12px 22px; font-size: .72rem; }
 .btn-block { width: 100%; }
 
@@ -108,8 +124,11 @@ h1, h2, h3, h4 {
 .btn-primary:hover {
   background: #245CA6;
   border-color: #245CA6;
-  transform: translateY(-2px);
   box-shadow: 0 10px 26px rgba(42, 108, 190, .42);
+}
+.btn-primary:active {
+  transform: translateY(1px) scale(.98);
+  box-shadow: 0 3px 10px rgba(42, 108, 190, .35);
 }
 
 .btn-ghost {
@@ -120,8 +139,8 @@ h1, h2, h3, h4 {
 .btn-ghost:hover {
   background: rgba(255, 255, 255, .12);
   border-color: #fff;
-  transform: translateY(-2px);
 }
+.btn-ghost:active { transform: translateY(1px) scale(.98); }
 
 /* ---------- Header ---------- */
 .site-header {
@@ -131,7 +150,7 @@ h1, h2, h3, h4 {
   background: rgba(10, 27, 51, .92);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, .08);
-  transition: background .3s var(--ease), box-shadow .3s var(--ease);
+  transition: background-color 250ms var(--ease-out), box-shadow 250ms var(--ease-out);
 }
 .site-header.scrolled {
   background: rgba(6, 18, 31, .98);
@@ -178,12 +197,16 @@ h1, h2, h3, h4 {
   content: "";
   position: absolute;
   left: 0; bottom: -6px;
-  width: 0; height: 2px;
+  width: 100%; height: 2px;
   background: var(--blue-400);
-  transition: width .25s var(--ease);
+  /* scaleX, not width — width triggers layout and paint on every frame,
+     transform is composited on the GPU */
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms var(--ease-out);
 }
 .nav a:hover { color: #fff; }
-.nav a:hover::after { width: 100%; }
+
 
 /* quote link shown only inside the mobile menu panel */
 .nav .nav-cta { display: none; }
@@ -198,6 +221,7 @@ h1, h2, h3, h4 {
   font-weight: 600;
   font-size: .9rem;
   color: #fff;
+  transition: color 200ms var(--ease-out);
 }
 .header-phone svg { width: 17px; height: 17px; fill: var(--blue-400); }
 .header-phone:hover { color: var(--blue-300); }
@@ -248,7 +272,14 @@ h1, h2, h3, h4 {
   background:
     linear-gradient(105deg, rgba(6, 18, 31, .96) 0%, rgba(10, 27, 51, .88) 45%, rgba(10, 27, 51, .55) 100%);
 }
-.hero-inner { position: relative; z-index: 2; }
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  /* script.js writes `transform` here directly on pointer move. It deliberately does
+     NOT read a CSS variable set on .hero: a custom property on the parent invalidates
+     style for every descendant on each mousemove, and the hero has ~15 of them. */
+  transition: transform 300ms var(--ease-out);
+}
 
 .eyebrow-box {
   display: inline-flex;
@@ -268,13 +299,11 @@ h1, h2, h3, h4 {
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--blue-400);
-  box-shadow: 0 0 0 0 rgba(91, 143, 212, .7);
-  animation: pulse 2.2s infinite;
 }
-@keyframes pulse {
-  70%  { box-shadow: 0 0 0 9px rgba(91, 143, 212, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(91, 143, 212, 0); }
-}
+/* The dot used to pulse on an infinite loop. Removed on purpose: an animation that
+   never stops competes with the headline for attention for as long as the page is
+   open, and it signals nothing — there is no live status behind it. A static dot
+   does the same typographic job. Infinite motion has to earn its permanence. */
 
 .hero-title {
   font-size: clamp(2.9rem, 7.2vw, 6.2rem);
@@ -396,7 +425,8 @@ h1, h2, h3, h4 {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s var(--ease);
+  transform-style: preserve-3d;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), border-color 200ms var(--ease-out);
 }
 .card::before {
   content: "";
@@ -404,16 +434,15 @@ h1, h2, h3, h4 {
   inset: auto 0 0 0;
   height: 3px;
   background: var(--blue-500);
+  border-radius: 0 0 var(--radius) var(--radius);
   transform: scaleX(0);
   transform-origin: left;
-  transition: transform .35s var(--ease);
+  transition: transform 220ms var(--ease-out);
 }
 .card:hover {
-  transform: translateY(-6px);
   border-color: transparent;
   box-shadow: var(--shadow-md);
 }
-.card:hover::before { transform: scaleX(1); }
 
 .card-ico {
   width: 54px; height: 54px;
@@ -422,9 +451,10 @@ h1, h2, h3, h4 {
   margin-bottom: 20px;
   background: rgba(42, 108, 190, .1);
   border-radius: var(--radius);
-  transition: background .3s var(--ease);
+  /* 300ms was too slow for a hover tint — the colour lagged behind the card lift */
+  transition: background-color 200ms var(--ease-out);
 }
-.card-ico svg { width: 26px; height: 26px; fill: var(--blue-500); transition: fill .3s var(--ease); }
+.card-ico svg { width: 26px; height: 26px; fill: var(--blue-500); transition: fill 200ms var(--ease-out); }
 .card:hover .card-ico { background: var(--blue-500); }
 .card:hover .card-ico svg { fill: #fff; }
 
@@ -443,7 +473,7 @@ h1, h2, h3, h4 {
 .card-cta::before { display: none; }
 .card-cta h3 { color: #fff; }
 .card-cta p { color: rgba(255, 255, 255, .74); }
-.card-cta:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); }
+.card-cta:hover { box-shadow: var(--shadow-lg); }
 
 /* ---------- Who we serve ---------- */
 .serve { grid-template-columns: repeat(5, 1fr); }
@@ -452,9 +482,10 @@ h1, h2, h3, h4 {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  transform-style: preserve-3d;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
-.serve-item:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+.serve-item:hover { box-shadow: var(--shadow-md); }
 .serve-item .num {
   display: block;
   font-family: "Barlow Condensed", sans-serif;
@@ -474,9 +505,10 @@ h1, h2, h3, h4 {
   background: var(--surface);
   border-left: 3px solid var(--blue-500);
   box-shadow: var(--shadow-sm);
-  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  transform-style: preserve-3d;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
-.why-item:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+.why-item:hover { box-shadow: var(--shadow-md); }
 .why-ico {
   width: 46px; height: 46px;
   display: grid; place-items: center;
@@ -496,11 +528,10 @@ h1, h2, h3, h4 {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+  transition: transform 220ms var(--ease-out), box-shadow 220ms var(--ease-out);
 }
-.type:hover { transform: translateY(-7px); box-shadow: var(--shadow-lg); }
-.type img { width: 100%; height: 220px; object-fit: cover; transition: transform .6s var(--ease); }
-.type:hover img { transform: scale(1.07); }
+.type:hover { box-shadow: var(--shadow-lg); }
+.type img { width: 100%; height: 220px; object-fit: cover; transition: transform 400ms var(--ease-out); }
 .type-body { padding: 24px 22px 28px; }
 .tag {
   display: inline-block;
@@ -525,14 +556,15 @@ h1, h2, h3, h4 {
   overflow: hidden;
   background: var(--navy-800);
   aspect-ratio: 4 / 5;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
 .proj img {
   width: 100%; height: 100%;
   object-fit: cover;
   opacity: .82;
-  transition: transform .6s var(--ease), opacity .4s var(--ease);
+  transition: transform 400ms var(--ease-out), opacity 300ms var(--ease-out);
 }
-.proj:hover img { transform: scale(1.08); opacity: .6; }
+.proj:hover img { opacity: .6; }
 .proj::after {
   content: "";
   position: absolute; inset: 0;
@@ -569,13 +601,18 @@ h1, h2, h3, h4 {
   gap: 64px;
   align-items: center;
 }
-.about-media { position: relative; }
+.about-media {
+  position: relative;
+  perspective: 1400px;
+}
 .about-media img {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
+  transform: rotateY(-4deg) rotateX(1.5deg);
+  transition: transform 400ms var(--ease-out);
 }
 .about-badge {
   position: absolute;
@@ -587,6 +624,8 @@ h1, h2, h3, h4 {
   background: var(--blue-500);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
+  transform: translateZ(46px);
+  transition: transform 400ms var(--ease-out);
 }
 .about-badge strong {
   font-family: "Barlow Condensed", sans-serif;
@@ -634,7 +673,7 @@ h1, h2, h3, h4 {
 
 /* ---------- Process ---------- */
 .steps { grid-template-columns: repeat(4, 1fr); gap: 30px; }
-.step { position: relative; padding-top: 26px; border-top: 3px solid var(--line); transition: border-color .3s var(--ease); }
+.step { position: relative; padding-top: 26px; border-top: 3px solid var(--line); transition: border-color 200ms var(--ease-out); }
 .step:hover { border-top-color: var(--blue-500); }
 .step-n {
   display: block;
@@ -669,9 +708,10 @@ h1, h2, h3, h4 {
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  transition: transform .3s var(--ease), box-shadow .3s var(--ease);
+  transform-style: preserve-3d;
+  transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
 }
-.review:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+.review:hover { box-shadow: var(--shadow-md); }
 .review .quote {
   font-family: "Barlow Condensed", serif;
   font-size: 4.4rem;
@@ -754,7 +794,7 @@ h1, h2, h3, h4 {
   color: var(--blue-500);
   margin-bottom: 2px;
 }
-.contact-list a { font-weight: 600; color: var(--ink); }
+.contact-list a { font-weight: 600; color: var(--ink); transition: color 200ms var(--ease-out); }
 .contact-list a:hover { color: var(--blue-500); }
 
 .contact-form {
@@ -829,8 +869,11 @@ h1, h2, h3, h4 {
   letter-spacing: .04em;
 }
 .footer-col a, .footer-col .muted { display: block; margin-bottom: 11px; font-size: .93rem; }
-.footer-col a { transition: color .2s var(--ease), padding-left .2s var(--ease); }
-.footer-col a:hover { color: var(--blue-400); padding-left: 5px; }
+.footer-col a {
+  /* translateX instead of padding-left: same visual nudge, no layout on hover */
+  transition: color 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.footer-col a:hover { color: var(--blue-400); }
 .muted { color: rgba(255, 255, 255, .45); }
 
 .footer-bottom {
@@ -857,19 +900,79 @@ h1, h2, h3, h4 {
   box-shadow: var(--shadow-md);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(12px);
-  transition: all .3s var(--ease);
+  transform: translateY(12px) scale(.94);
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    background-color 200ms var(--ease-out),
+    visibility 0s linear 200ms;
 }
-.to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
-.to-top:hover { background: #245CA6; transform: translateY(-3px); }
+.to-top.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
 .to-top svg { width: 22px; height: 22px; fill: #fff; }
+
+/* ==========================================================================
+   Hover motion — mouse and trackpad only
+   --------------------------------------------------------------------------
+   Tapping on a touchscreen fires a :hover that then STICKS until the next tap
+   elsewhere, so an untethered hover lift leaves cards floating at random on a
+   phone. Colour and shadow hovers stay ungated above (harmless if they stick);
+   everything that MOVES lives in here.
+   ========================================================================== */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover,
+  .btn-ghost:hover        { transform: translateY(-2px); }
+
+  .card:hover,
+  .card-cta:hover         { transform: translateY(-6px); }
+  .card:hover::before     { transform: scaleX(1); }
+
+  .serve-item:hover,
+  .why-item:hover,
+  .review:hover           { transform: translateY(-5px); }
+
+  .type:hover             { transform: translateY(-7px); }
+  .type:hover img         { transform: scale(1.07); }
+  .proj:hover img         { transform: scale(1.08); }
+
+  .about-media:hover img  { transform: rotateY(0deg) rotateX(0deg) scale(1.015); }
+
+  .nav a:hover::after     { transform: scaleX(1); }
+  .footer-col a:hover     { transform: translateX(5px); }
+  .to-top:hover           { background: #245CA6; transform: translateY(-3px); }
+}
 
 /* ---------- Reveal on scroll ---------- */
 /* Only hide content when JS is confirmed running (the <html class="js"> flag is set
    by an inline script in <head>). Without this guard, a JS failure or a crawler
    with scripting off would see a completely blank page. */
-.js .reveal { opacity: 0; transform: translateY(26px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+
+/* Single elements — section labels, headings, lede paragraphs. Short travel: the
+   movement is there to draw the eye down the page, not to be watched. */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 500ms var(--ease-out), transform 500ms var(--ease-out);
+}
 .js .reveal.in { opacity: 1; transform: none; }
+
+/* Groups — cards, tiles, chips. The children arrive in sequence so the eye reads
+   the grid in order instead of being hit with twelve things at once. --i is set
+   per child by script.js and capped there, because past ~8 the tail feels laggy. */
+.js .stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 460ms var(--ease-out), transform 460ms var(--ease-out);
+}
+.js .stagger.in > * {
+  opacity: 1;
+  transform: none;
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
 
 /* ==========================================================================
    Responsive
@@ -907,7 +1010,32 @@ h1, h2, h3, h4 {
     padding: 12px 24px 26px;
     background: rgba(6, 18, 31, .99);
     border-bottom: 1px solid rgba(255, 255, 255, .1);
+    /* the panel itself drops in; `display` can't transition, so this is a keyframe
+       animation on the element that has just been switched to display:flex */
+    animation: panelIn 220ms var(--ease-out);
+    transform-origin: top center;
   }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(-8px); }
+  }
+
+  /* rows arrive in sequence so the eye lands on the first item rather than the
+     whole block at once. 8 rows x 30ms tops out at 210ms — still under the
+     threshold where a menu starts to feel slow to open. */
+  .nav.open a {
+    animation: rowIn 200ms var(--ease-out) backwards;
+  }
+  @keyframes rowIn {
+    from { opacity: 0; transform: translateY(-6px); }
+  }
+  .nav.open a:nth-child(1) { animation-delay:  40ms; }
+  .nav.open a:nth-child(2) { animation-delay:  70ms; }
+  .nav.open a:nth-child(3) { animation-delay: 100ms; }
+  .nav.open a:nth-child(4) { animation-delay: 130ms; }
+  .nav.open a:nth-child(5) { animation-delay: 160ms; }
+  .nav.open a:nth-child(6) { animation-delay: 190ms; }
+  .nav.open a:nth-child(7) { animation-delay: 220ms; }
+  .nav.open a:nth-child(8) { animation-delay: 250ms; }
   .nav.open a {
     width: 100%;
     padding: 15px 0;
@@ -970,7 +1098,28 @@ h1, h2, h3, h4 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-  .js .reveal { opacity: 1; transform: none; }
-  html { scroll-behavior: auto; }
+  /* animation-iteration-count is the important one here. Collapsing the DURATION of an
+     `infinite` animation without also collapsing the COUNT makes it restart every
+     0.01ms — the ticker and the hero zoom would strobe instead of stopping, which is
+     actively worse for the people this query exists to protect. */
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Reduced motion means less movement, not no feedback. Content still fades in —
+     the travel is what gets dropped, not the transition. */
+  .js .reveal,
+  .js .stagger > * {
+    opacity: 0;
+    transform: none;
+    transition: opacity 300ms var(--ease-out) !important;
+  }
+  .js .reveal.in,
+  .js .stagger.in > * { opacity: 1; transition-delay: 0s !important; }
+
+  .hero-inner { transform: none !important; }
+  .ticker-track { transform: none !important; }
 }

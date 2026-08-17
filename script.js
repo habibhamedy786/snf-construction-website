@@ -30,26 +30,122 @@
     }
   });
 
-  /* ---- Reveal on scroll ---- */
-  var reveals = document.querySelectorAll('.reveal');
+  /* ---- Reveal on scroll ----
+     Two behaviours, one observer:
+       .reveal  — the element fades up on its own (headings, labels, lede text)
+       .stagger — the element's CHILDREN fade up in sequence (card grids, chip rows)
+
+     Fires once per element and then stops watching it. Re-animating something every
+     time it scrolls back into view is an interface arguing with its reader. */
+  var targets = document.querySelectorAll('.reveal, .stagger');
+
+  // Past roughly 8 items the tail of a stagger reads as lag rather than rhythm,
+  // so the delay index plateaus instead of growing with the list.
+  var MAX_STEPS = 7;
+
+  function reveal(el) {
+    if (el.classList.contains('stagger')) {
+      var kids = el.children;
+      for (var i = 0; i < kids.length; i++) {
+        // set on the child, never on the parent: a custom property on the parent
+        // invalidates style for the whole subtree on every write
+        kids[i].style.setProperty('--i', Math.min(i, MAX_STEPS));
+      }
+    }
+    el.classList.add('in');
+  }
+
+  function revealAll() {
+    targets.forEach(reveal);
+  }
 
   if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('in');
-          io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+    var observerFired = false;
 
-    reveals.forEach(function (el) { io.observe(el); });
+    var io = new IntersectionObserver(function (entries) {
+      observerFired = true;
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        reveal(entry.target);
+        io.unobserve(entry.target);
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+    targets.forEach(function (el) { io.observe(el); });
+
+    /* Failsafe. Because the reveal styles start at opacity 0, anything that stops the
+       observer from delivering entries doesn't degrade the page — it erases it. A
+       healthy browser invokes the callback on the first frame after observe(), so
+       `observerFired` is true almost immediately and this timer does nothing. If it is
+       still false a second later, the observer is not working and we show everything
+       rather than leave the visitor on a blank page. */
+    setTimeout(function () {
+      if (observerFired) return;
+      io.disconnect();
+      revealAll();
+    }, 1000);
   } else {
-    reveals.forEach(function (el) { el.classList.add('in'); });
+    revealAll();
   }
 
   /* ---- Current year in footer ---- */
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  /* ---- 3D tilt + parallax ----
+     Only runs for mouse/trackpad users who have not asked for reduced motion.
+     Touch devices and prefers-reduced-motion get the flat, static layout. */
+  var wantsMotion =
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* A 7-degree 3D tilt used to follow the cursor across every service card, "who we
+     serve" tile, "why SNF" item and review. It has been removed rather than tuned:
+
+       - Those cards hold text people are reading. Motion on content being read is
+         friction, not polish.
+       - Card hover is a tens-of-times-per-visit interaction. At that frequency the
+         only acceptable motion is near-imperceptible, and a 7-degree rotation on a
+         perspective of 900px is not that.
+       - It wrote transforms on every mousemove with no rAF batching, forcing a style
+         recalculation per event on up to 20 elements.
+
+     The gated hover lift in styles.css already confirms "this is interactive", which
+     is the whole job. The hero keeps its parallax — one decorative surface, no text
+     being read, and it is the page's first impression. */
+
+  if (wantsMotion) {
+    var heroInner = document.querySelector('.hero-inner');
+
+    if (heroInner) {
+      var px = 0, py = 0, queued = false;
+
+      // Pointer events fire far faster than the screen refreshes. Coalescing writes
+      // into one rAF means at most one style write per frame instead of per event.
+      function applyParallax() {
+        queued = false;
+        heroInner.style.transform =
+          'translate3d(' + (px * 14).toFixed(2) + 'px, ' + (py * 9).toFixed(2) + 'px, 0)';
+      }
+
+      function queueParallax() {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(applyParallax);
+      }
+
+      document.querySelector('.hero').addEventListener('mousemove', function (e) {
+        var r = this.getBoundingClientRect();
+        px = (e.clientX - r.left) / r.width - 0.5;
+        py = (e.clientY - r.top) / r.height - 0.5;
+        queueParallax();
+      });
+
+      document.querySelector('.hero').addEventListener('mouseleave', function () {
+        px = py = 0;
+        queueParallax();
+      });
+    }
+  }
 
   /* ------------------------------------------------------------------
      Contact form
@@ -61,7 +157,7 @@
      once the site is live), create a free form at https://formspree.io
      and paste your endpoint URL below. See README.md, step 5.
   ------------------------------------------------------------------ */
-  var FORMSPREE_ENDPOINT = ''; // e.g. 'https://formspree.io/f/xxxxxxxx'
+  var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mbgrkrqe';
   var CONTACT_EMAIL = 'snfconstruction23@gmail.com';
 
   var form = document.getElementById('quoteForm');
